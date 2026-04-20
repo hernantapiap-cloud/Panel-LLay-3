@@ -186,7 +186,7 @@ select.fi{background:var(--card)}
     <header class="hd">
       <button class="mb" onclick="document.getElementById('sidebar').classList.toggle('closed')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg></button>
       <div style="flex:1;display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div><h1 id="hTitle">Resumen</h1><div class="dt" id="hDate"></div></div><div style="flex:1;min-width:180px;max-width:360px;position:relative"><input type="text" id="globalSearch" placeholder="🔍 Buscar en todo el panel..." oninput="doGlobalSearch(this.value)" onblur="setTimeout(function(){var r=document.getElementById(\'gsResults\');if(r)r.style.display=\'none\'},200)" onfocus="if(this.value)doGlobalSearch(this.value)" style="width:100%;padding:8px 14px;border:1px solid rgba(212,212,170,.4);border-radius:20px;background:rgba(254,250,224,.5);font-size:12px;outline:none;font-family:inherit"><div id="gsResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.12);margin-top:4px;max-height:360px;overflow-y:auto;z-index:100"></div></div></div>
-      <div style="background:linear-gradient(135deg,#40916C,#2D6A4F);color:#fff;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 8px rgba(64,145,108,.3);margin-right:8px">v18 · DOTACIÓN MUNICIPAL</div>
+      <div style="background:linear-gradient(135deg,#40916C,#2D6A4F);color:#fff;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.5px;box-shadow:0 2px 8px rgba(64,145,108,.3);margin-right:8px">v20 · HTML CHARTS</div>
       <div class="hr"><div class="nt" id="notifBell" onclick="toggleNotifs(event)"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#52796F" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><div class="notif-counter" id="notifCounter" style="display:none">0</div></div><div class="av">JA</div></div>
     </header>
     <div id="notifPanel" class="notif-panel">
@@ -214,12 +214,11 @@ unitNotes:{"DAF":"","DOM":"","DIDECO":"","SECPLAN":"","Sec. Municipal":"","Contr
 sumarios:[{id:1,tipo:"investigacion",decreto:"DA N°125/2026",fechaDecreto:"2026-03-15",fiscal:"Por designar",materia:"Eventual incumplimiento de horario funcionarios DOM",plazoBase:5,status:"instruccion",obs:"Plazo prorrogado por 5 días adicionales"},{id:2,tipo:"sumario",decreto:"DA N°089/2026",fechaDecreto:"2026-02-20",fiscal:"Abogada Asesoría Jurídica",materia:"Irregularidad Orden de Compra Kimia SpA N°3882-312-SE25",plazoBase:20,status:"vista_fiscal",obs:"Vista fiscal en preparación"}],
 dotacion:{
 lastUpdate:"",
-planta:{personas:45,gastoMensual:85000000,horasExtra:4200000,cuentaSub:"21.01"},
-contrata:{personas:38,gastoMensual:62000000,horasExtra:3800000,cuentaSub:"21.02"},
-honorarios:{personas:22,gastoMensual:18500000,horasExtra:0,cuentaSub:"21.03"},
-hon2104:{personas:8,gastoMensual:6500000,horasExtra:0,cuentaSub:"21.04"},
-sumaAlzada:{personas:12,gastoMensual:9200000,horasExtra:0,cuentaSub:"21.03 SA"},
-detalle:[]
+planta:{personas:45,gastoMensual:85000000,cuentaSub:"21.01"},
+contrata:{personas:38,gastoMensual:62000000,cuentaSub:"21.02"},
+honSumaAlzada:{personas:34,gastoMensual:27700000,cuentaSub:"21.03"},
+hon2104:{personas:8,gastoMensual:6500000,cuentaSub:"21.04"},
+ejecucionMensual:[{mes:"Enero",planta:82000000,contrata:60000000,honSA:25500000,hon2104:6000000,hePlanta:2800000,heContrata:4400000},{mes:"Febrero",planta:85000000,contrata:62000000,honSA:27700000,hon2104:6500000,hePlanta:3200000,heContrata:4800000}]
 },
 trimestrales:[],
 bitacora:[],
@@ -238,7 +237,7 @@ notas:"Proceso complejo. Requiere coordinación con MINSAL, Serv. Salud Aconcagu
 };
 
 // ══════ STATE ══════
-var APP_VERSION="2026.04.18.v18";
+var APP_VERSION="2026.04.20.v20";
 var D;
 function loadData(){
   try{
@@ -256,6 +255,8 @@ function loadData(){
       if(!D.procesosRelevantes)D.procesosRelevantes=JSON.parse(JSON.stringify(DEF.procesosRelevantes));
       if(!D.bitacora)D.bitacora=[];
       if(!D.dotacion)D.dotacion=JSON.parse(JSON.stringify(DEF.dotacion));
+      if(D.dotacion&&!D.dotacion.honSumaAlzada)D.dotacion.honSumaAlzada={personas:0,gastoMensual:0,cuentaSub:'21.03'};
+      if(D.dotacion&&!D.dotacion.ejecucionMensual)D.dotacion.ejecucionMensual=[];
       // Force refresh mercado if old 2025 licitaciones detected
       if(D.mercado&&D.mercado.some(function(m){return(m.oc||"").indexOf("25")>=0&&(m.oc||"").indexOf("2025")<0&&/-L[PEQ]25$/.test(m.oc||"")})){
         D.mercado=JSON.parse(JSON.stringify(DEF.mercado));
@@ -456,177 +457,198 @@ function saveUnitTask(i,tid){
 // ══════ DOTACIÓN MUNICIPAL ══════
 function rDotacion(){
   if(!D.dotacion)D.dotacion=JSON.parse(JSON.stringify(DEF.dotacion));
-  var el=document.getElementById("sc");
+      if(D.dotacion&&!D.dotacion.honSumaAlzada)D.dotacion.honSumaAlzada={personas:0,gastoMensual:0,cuentaSub:'21.03'};
+      if(D.dotacion&&!D.dotacion.ejecucionMensual)D.dotacion.ejecucionMensual=[];
+  var el=document.getElementById('sc');
   var d=D.dotacion;
   var cats=[
-    {key:"planta",label:"Planta",color:"#1B4332",icon:"🏛"},
-    {key:"contrata",label:"Contrata",color:"#40916C",icon:"📋"},
-    {key:"honorarios",label:"Honorarios (21.03)",color:"#3A86A8",icon:"📄"},
-    {key:"hon2104",label:"Honorarios (21.04)",color:"#9D4EDD",icon:"📑"},
-    {key:"sumaAlzada",label:"Suma Alzada (21.03 SA)",color:"#D4A373",icon:"💼"}
+    {key:'planta',label:'Planta',color:'#1B4332',icon:'🏛',cuenta:'21.01'},
+    {key:'contrata',label:'A Contrata',color:'#40916C',icon:'📋',cuenta:'21.02'},
+    {key:'honSumaAlzada',label:'Honorario Suma Alzada',color:'#3A86A8',icon:'📄',cuenta:'21.03'},
+    {key:'hon2104',label:'Honorarios 21.04',color:'#9D4EDD',icon:'📑',cuenta:'21.04'}
   ];
-  var totalPersonas=0,totalGasto=0,totalHE=0;
-  cats.forEach(function(c){var x=d[c.key];totalPersonas+=x.personas;totalGasto+=x.gastoMensual;totalHE+=x.horasExtra});
-  var gastoAnual=totalGasto*12;
-  var h="";
+  var ej=d.ejecucionMensual||[];
+  // Calculate totals (exclude hon2104 from % personal calc)
+  var totalPersonas=0,totalGasto=0,totalGastoSinH4=0;
+  cats.forEach(function(c){var x=d[c.key];if(!x)return;totalPersonas+=x.personas||0;totalGasto+=(x.gastoMensual||0);if(c.key!=='hon2104')totalGastoSinH4+=(x.gastoMensual||0)});
+  // Get HE totals from last month of ejecucion or defaults
+  var lastEj=ej.length>0?ej[ej.length-1]:null;
+  var totalHE=lastEj?((lastEj.hePlanta||0)+(lastEj.heContrata||0)):0;
+  var gastoAnualSinH4=(totalGastoSinH4+totalHE)*12;
+  var h='';
   // Header
   h+='<div class="bar"><h3 style="font-size:15px;font-weight:600;flex:1">Dotación Municipal — Panel Ejecutivo</h3><button class="bs" onclick="openDotacionExcel()">📂 Cargar Excel</button><button class="bs" onclick="editDotacion()">✏️ Editar manual</button></div>';
   if(d.lastUpdate)h+='<div style="font-size:11px;color:var(--txl);margin-bottom:16px">📅 Última actualización: '+d.lastUpdate+'</div>';
   // KPI Cards
   h+='<div class="g g4 mb24">';
-  [{l:"Total Dotación",v:totalPersonas,s:"personas",c:"#1B4332",i:"👥"},{l:"Gasto Mensual",v:"$"+formatMM(totalGasto),s:"remuneraciones",c:"#40916C",i:"💰"},{l:"Gasto Anual Proy.",v:"$"+formatMM(gastoAnual),s:"proyección 12 meses",c:"#3A86A8",i:"📊"},{l:"Horas Extra",v:"$"+formatMM(totalHE)+"/mes",s:((totalGasto>0?(totalHE/totalGasto*100).toFixed(1):0)+"% del gasto"),c:"#DDA15E",i:"⏰"}].forEach(function(k){
+  var kpis=[{l:'Total Dotación',v:totalPersonas,s:'personas',c:'#1B4332',i:'👥'},{l:'Gasto Mensual',v:'$'+formatMM(totalGasto),s:'todas las cuentas',c:'#40916C',i:'💰'},{l:'Gasto s/Hon 21.04',v:'$'+formatMM(totalGastoSinH4)+'/mes',s:'para cálculo 42%',c:'#3A86A8',i:'📊'},{l:'Horas Extra Últ. Mes',v:'$'+formatMM(totalHE)+'/mes',s:'Planta + Contrata',c:'#DDA15E',i:'⏰'}];
+  kpis.forEach(function(k){
     h+='<div class="cd cds" style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:12px;background:'+k.c+'18;display:flex;align-items:center;justify-content:center;font-size:22px">'+k.i+'</div><div><div style="font-size:22px;font-weight:700">'+k.v+'</div><div style="font-size:11px;color:var(--txl)">'+k.l+'</div><div style="font-size:10px;color:var(--pri-s)">'+k.s+'</div></div></div>';
   });
   h+='</div>';
   // Charts row
   h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px" class="g">';
-  // Pie chart - distribución personas
   h+='<div class="cd"><h3 style="margin:0 0 12px;font-size:14px;font-weight:600">👥 Distribución de Personal</h3><div style="position:relative;height:260px"><canvas id="cDotPie"></canvas></div></div>';
-  // Bar chart - gasto por tipo
   h+='<div class="cd"><h3 style="margin:0 0 12px;font-size:14px;font-weight:600">💰 Gasto Mensual por Categoría (MM$)</h3><div style="position:relative;height:260px"><canvas id="cDotBar"></canvas></div></div>';
   h+='</div>';
-  // Stacked bar: gasto regular vs horas extra
-  h+='<div class="cd mb24"><h3 style="margin:0 0 12px;font-size:14px;font-weight:600">⏰ Remuneración Base vs Horas Extra por Categoría (MM$)</h3><div style="position:relative;height:260px"><canvas id="cDotStack"></canvas></div></div>';
-  // Monthly execution chart
-  var ej=d.ejecucionMensual||[];
+  // Monthly execution - HTML visual bars (no Chart.js)
   if(ej.length>0){
-    h+='<div class="cd mb24"><div class="bar"><h3 style="font-size:14px;font-weight:600;flex:1">📈 Ejecución Presupuestaria Mensual — Gasto en Personal</h3><button class="bs" onclick="addEjecMes()">+ Agregar Mes</button></div>';
-    h+='<div style="position:relative;height:300px"><canvas id="cDotMensual"></canvas></div>';
-    // Monthly data table
-    h+='<div style="overflow-x:auto;margin-top:14px"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#1B433210"><th style="padding:8px 10px;text-align:left">Mes</th><th style="padding:8px 10px;text-align:right">Planta</th><th style="padding:8px 10px;text-align:right">Contrata</th><th style="padding:8px 10px;text-align:right">Hon. 21.03</th><th style="padding:8px 10px;text-align:right">Hon. 21.04</th><th style="padding:8px 10px;text-align:right">S. Alzada</th><th style="padding:8px 10px;text-align:right;color:#DDA15E">HH.EE.</th><th style="padding:8px 10px;text-align:right;font-weight:700">TOTAL</th><th style="padding:8px 10px;width:60px"></th></tr></thead><tbody>';
-    var acumTotal=0;
+    // Find max total for scaling bars
+    var maxMes=0;
+    ej.forEach(function(m){var t=(m.planta||0)+(m.contrata||0)+(m.honSA||0)+(m.hon2104||0)+(m.hePlanta||0)+(m.heContrata||0);if(t>maxMes)maxMes=t});
+    h+='<div class="cd mb24"><div class="bar"><h3 style="font-size:14px;font-weight:600;flex:1">📈 Ejecución Presupuestaria Mensual</h3><button class="bs" onclick="addEjecMesModal()">+ Agregar Mes</button></div>';
+    // Visual stacked bars (pure HTML)
+    h+='<div style="margin-bottom:20px">';
+    var barCats=[{k:'planta',l:'Planta',c:'#1B4332'},{k:'contrata',l:'Contrata',c:'#40916C'},{k:'honSA',l:'Hon. S.A.',c:'#3A86A8'},{k:'hon2104',l:'Hon. 21.04',c:'#9D4EDD'},{k:'hePlanta',l:'HE Planta',c:'#E76F51'},{k:'heContrata',l:'HE Contrata',c:'#DDA15E'}];
+    // Legend
+    h+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:11px">';
+    barCats.forEach(function(bc){h+='<div style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:'+bc.c+'"></span>'+bc.l+'</div>'});
+    h+='</div>';
     ej.forEach(function(m,mi){
-      var mesTotal=(m.planta||0)+(m.contrata||0)+(m.honorarios||0)+(m.hon2104||0)+(m.sumaAlzada||0)+(m.heTotal||0);
-      acumTotal+=mesTotal;
+      var vals=[m.planta||0,m.contrata||0,m.honSA||0,m.hon2104||0,m.hePlanta||0,m.heContrata||0];
+      var mesTotal=vals.reduce(function(a,b){return a+b},0);
+      var mesSinH4=mesTotal-(m.hon2104||0);
+      h+='<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:13px;font-weight:700">'+m.mes+'</span><span style="font-size:12px;color:var(--txl)">$'+formatMM(mesTotal)+' MM <span style="font-size:10px">(s/21.04: $'+formatMM(mesSinH4)+')</span></span></div>';
+      h+='<div style="display:flex;height:28px;border-radius:6px;overflow:hidden;background:#eee;cursor:pointer" onclick="editEjecMesModal('+mi+')" title="Clic para editar '+m.mes+'">';
+      barCats.forEach(function(bc,bi){
+        var pct=maxMes>0?(vals[bi]/maxMes*100):0;
+        if(pct>0)h+='<div style="width:'+pct.toFixed(1)+'%;background:'+bc.c+';transition:width .3s" title="'+bc.l+': $'+formatMM(vals[bi])+' MM"></div>';
+      });
+      h+='</div></div>';
+    });
+    h+='</div>';
+    // Data table
+    h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#1B433210"><th style="padding:8px 10px;text-align:left">Mes</th><th style="padding:8px 10px;text-align:right">Planta</th><th style="padding:8px 10px;text-align:right">Contrata</th><th style="padding:8px 10px;text-align:right">Hon. S.A.</th><th style="padding:8px 10px;text-align:right">Hon. 21.04</th><th style="padding:8px 10px;text-align:right;color:#E76F51">HE Planta</th><th style="padding:8px 10px;text-align:right;color:#DDA15E">HE Contrata</th><th style="padding:8px 10px;text-align:right;font-weight:700">TOTAL</th><th style="padding:8px 10px;text-align:right;color:var(--txl)">s/21.04</th><th style="padding:8px 10px;width:60px"></th></tr></thead><tbody>';
+    var acumTotal=0,acumSinH4=0;
+    ej.forEach(function(m,mi){
+      var mesTotal=(m.planta||0)+(m.contrata||0)+(m.honSA||0)+(m.hon2104||0)+(m.hePlanta||0)+(m.heContrata||0);
+      var mesSinH4=mesTotal-(m.hon2104||0);
+      acumTotal+=mesTotal;acumSinH4+=mesSinH4;
       h+='<tr style="border-bottom:1px solid rgba(212,212,170,.2)"><td style="padding:8px 10px;font-weight:600">'+m.mes+'</td>';
       h+='<td style="padding:8px 10px;text-align:right">$'+formatMM(m.planta||0)+'</td>';
       h+='<td style="padding:8px 10px;text-align:right">$'+formatMM(m.contrata||0)+'</td>';
-      h+='<td style="padding:8px 10px;text-align:right">$'+formatMM(m.honorarios||0)+'</td>';
-      h+='<td style="padding:8px 10px;text-align:right">$'+formatMM(m.hon2104||0)+'</td>';
-      h+='<td style="padding:8px 10px;text-align:right">$'+formatMM(m.sumaAlzada||0)+'</td>';
-      h+='<td style="padding:8px 10px;text-align:right;color:#DDA15E">$'+formatMM(m.heTotal||0)+'</td>';
+      h+='<td style="padding:8px 10px;text-align:right">$'+formatMM(m.honSA||0)+'</td>';
+      h+='<td style="padding:8px 10px;text-align:right;color:#9D4EDD">$'+formatMM(m.hon2104||0)+'</td>';
+      h+='<td style="padding:8px 10px;text-align:right;color:#E76F51">$'+formatMM(m.hePlanta||0)+'</td>';
+      h+='<td style="padding:8px 10px;text-align:right;color:#DDA15E">$'+formatMM(m.heContrata||0)+'</td>';
       h+='<td style="padding:8px 10px;text-align:right;font-weight:700">$'+formatMM(mesTotal)+'</td>';
-      h+='<td style="padding:8px 10px;white-space:nowrap"><button class="be" onclick="editEjecMes('+mi+')" title="Editar">✏️</button><button class="bdel" onclick="delEjecMes('+mi+')" title="Eliminar">🗑</button></td></tr>';
+      h+='<td style="padding:8px 10px;text-align:right;color:var(--txl);font-size:10px">$'+formatMM(mesSinH4)+'</td>';
+      h+='<td style="padding:8px 10px;white-space:nowrap"><button class="be" onclick="editEjecMesModal('+mi+')" title="Editar">✏️</button><button class="bdel" onclick="delEjecMesAction('+mi+')" title="Eliminar">🗑</button></td></tr>';
     });
-    h+='<tr style="background:#1B433215;font-weight:700"><td style="padding:8px 10px">ACUMULADO</td><td colspan="6" style="padding:8px 10px"></td><td style="padding:8px 10px;text-align:right;font-size:13px">$'+formatMM(acumTotal)+' MM</td><td></td></tr>';
+    h+='<tr style="background:#1B433215;font-weight:700"><td style="padding:8px 10px">ACUMULADO</td><td colspan="6" style="padding:8px 10px"></td><td style="padding:8px 10px;text-align:right;font-size:13px">$'+formatMM(acumTotal)+' MM</td><td style="padding:8px 10px;text-align:right;font-size:10px;color:var(--txl)">$'+formatMM(acumSinH4)+'</td><td></td></tr>';
     h+='</tbody></table></div></div>';
   }else{
-    h+='<div class="cd mb24" style="text-align:center;padding:30px"><div style="font-size:36px;margin-bottom:10px">📈</div><p style="font-size:14px;color:var(--txl);margin-bottom:10px">Aún no tienes ejecución mensual registrada.</p><button class="bp" onclick="addEjecMes()">+ Agregar primer mes</button></div>';
+    h+='<div class="cd mb24" style="text-align:center;padding:30px"><div style="font-size:36px;margin-bottom:10px">📈</div><p style="font-size:14px;color:var(--txl);margin-bottom:10px">Aún no tienes ejecución mensual registrada.</p><button class="bp" onclick="addEjecMesModal()">+ Agregar primer mes</button></div>';
   }
   // Detail table
   h+='<div class="cd mb24"><h3 style="margin:0 0 14px;font-size:14px;font-weight:600">📋 Detalle por Categoría</h3>';
-  h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#1B433210"><th style="padding:10px 14px;text-align:left">Categoría</th><th style="padding:10px 14px;text-align:center">Cuenta</th><th style="padding:10px 14px;text-align:center">Personas</th><th style="padding:10px 14px;text-align:right">Gasto Mensual</th><th style="padding:10px 14px;text-align:right">Horas Extra</th><th style="padding:10px 14px;text-align:right">Total c/HE</th><th style="padding:10px 14px;text-align:center">% del Total</th></tr></thead><tbody>';
-  cats.forEach(function(c,ci){
-    var x=d[c.key];var total=x.gastoMensual+x.horasExtra;var pct=totalGasto>0?((x.gastoMensual+x.horasExtra)/(totalGasto+totalHE)*100).toFixed(1):0;
-    h+='<tr style="border-bottom:1px solid rgba(212,212,170,.2);background:'+(ci%2===0?"#fff":"rgba(212,212,170,.06)")+'"><td style="padding:10px 14px"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:'+c.color+';margin-right:8px"></span><strong>'+c.label+'</strong></td>';
-    h+='<td style="padding:10px 14px;text-align:center;font-size:11px;color:var(--txl)">'+x.cuentaSub+'</td>';
-    h+='<td style="padding:10px 14px;text-align:center;font-weight:700;font-size:16px">'+x.personas+'</td>';
-    h+='<td style="padding:10px 14px;text-align:right">$'+formatMM(x.gastoMensual)+' MM</td>';
-    h+='<td style="padding:10px 14px;text-align:right;color:'+(x.horasExtra>0?'#DDA15E':'var(--txl)')+'">'+( x.horasExtra>0?'$'+formatMM(x.horasExtra)+' MM':'—')+'</td>';
-    h+='<td style="padding:10px 14px;text-align:right;font-weight:600">$'+formatMM(total)+' MM</td>';
-    h+='<td style="padding:10px 14px;text-align:center"><div style="display:flex;align-items:center;gap:6px;justify-content:center"><div style="width:60px;height:6px;background:#eee;border-radius:3px"><div style="width:'+pct+'%;height:100%;background:'+c.color+';border-radius:3px"></div></div><span style="font-size:11px;font-weight:600">'+pct+'%</span></div></td></tr>';
+  h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#1B433210"><th style="padding:10px 14px;text-align:left">Categoría</th><th style="padding:10px 14px;text-align:center">Cuenta</th><th style="padding:10px 14px;text-align:center">Personas</th><th style="padding:10px 14px;text-align:right">Gasto Mensual</th><th style="padding:10px 14px;text-align:center">% del Total</th><th style="padding:10px 14px;text-align:center">Incide 42%</th></tr></thead><tbody>';
+  cats.forEach(function(ct,ci){
+    var x=d[ct.key];if(!x)return;var pct=totalGasto>0?((x.gastoMensual||0)/totalGasto*100).toFixed(1):0;
+    var incide=ct.key!=='hon2104';
+    h+='<tr style="border-bottom:1px solid rgba(212,212,170,.2);background:'+(ci%2===0?'#fff':'rgba(212,212,170,.06)')+'"><td style="padding:10px 14px"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:'+ct.color+';margin-right:8px"></span><strong>'+ct.label+'</strong></td>';
+    h+='<td style="padding:10px 14px;text-align:center;font-size:11px;color:var(--txl)">'+ct.cuenta+'</td>';
+    h+='<td style="padding:10px 14px;text-align:center;font-weight:700;font-size:16px">'+(x.personas||0)+'</td>';
+    h+='<td style="padding:10px 14px;text-align:right">$'+formatMM(x.gastoMensual||0)+' MM</td>';
+    h+='<td style="padding:10px 14px;text-align:center"><div style="display:flex;align-items:center;gap:6px;justify-content:center"><div style="width:60px;height:6px;background:#eee;border-radius:3px"><div style="width:'+pct+'%;height:100%;background:'+ct.color+';border-radius:3px"></div></div><span style="font-size:11px;font-weight:600">'+pct+'%</span></div></td>';
+    h+='<td style="padding:10px 14px;text-align:center;font-size:12px">'+(incide?'<span style="color:#40916C;font-weight:700">SÍ</span>':'<span style="color:#9D4EDD;font-weight:600">NO</span>')+'</td></tr>';
   });
-  // Total row
-  h+='<tr style="background:#1B433215;font-weight:700"><td style="padding:10px 14px">TOTAL DOTACIÓN</td><td style="padding:10px 14px"></td><td style="padding:10px 14px;text-align:center;font-size:18px">'+totalPersonas+'</td><td style="padding:10px 14px;text-align:right">$'+formatMM(totalGasto)+' MM</td><td style="padding:10px 14px;text-align:right;color:#DDA15E">$'+formatMM(totalHE)+' MM</td><td style="padding:10px 14px;text-align:right">$'+formatMM(totalGasto+totalHE)+' MM</td><td style="padding:10px 14px;text-align:center">100%</td></tr>';
+  h+='<tr style="background:#1B433215;font-weight:700"><td style="padding:10px 14px">TOTAL</td><td></td><td style="padding:10px 14px;text-align:center;font-size:18px">'+totalPersonas+'</td><td style="padding:10px 14px;text-align:right">$'+formatMM(totalGasto)+' MM</td><td colspan="2"></td></tr>';
   h+='</tbody></table></div></div>';
-  // Alert: % personal sobre ingresos propios
+  // Alert: % personal sobre ingresos propios (EXCLUDE hon2104)
   var ingPropios=11924000000;
-  var gastoPersonalAnual=gastoAnual+totalHE*12;
-  var pctIng=(gastoPersonalAnual/ingPropios*100).toFixed(1);
-  var alertCol=parseFloat(pctIng)>42?"#BC4749":parseFloat(pctIng)>38?"#DDA15E":"#40916C";
-  h+='<div style="background:'+alertCol+'10;border:2px solid '+alertCol+';border-radius:12px;padding:16px 20px;margin-bottom:20px"><div style="display:flex;align-items:center;gap:14px"><div style="font-size:28px">⚖️</div><div style="flex:1"><div style="font-size:14px;font-weight:700;color:'+alertCol+'">Gasto en Personal: '+pctIng+'% del ingreso propio municipal</div><div style="font-size:12px;color:var(--txl);margin-top:4px">Límite legal: 42% conforme Ley 18.294 modificada por Ley 21.561. Presupuesto ingresos propios: $'+formatMM(ingPropios)+' MM</div></div></div>';
-  if(parseFloat(pctIng)>42)h+='<div style="margin-top:10px;font-size:12px;color:#BC4749;font-weight:600">🚨 ALERTA: Se excede el límite legal del 42%. Requiere plan de reducción inmediato.</div>';
-  else if(parseFloat(pctIng)>38)h+='<div style="margin-top:10px;font-size:12px;color:#DDA15E;font-weight:600">⚠️ PRECAUCIÓN: Cerca del límite legal (42%). Monitorear crecimiento de la dotación.</div>';
-  else h+='<div style="margin-top:10px;font-size:12px;color:#40916C;font-weight:600">✅ Dentro del rango legal. Margen disponible: '+(42-parseFloat(pctIng)).toFixed(1)+' puntos porcentuales.</div>';
+  var pctIng=(gastoAnualSinH4/ingPropios*100).toFixed(1);
+  var alertCol=parseFloat(pctIng)>42?'#BC4749':parseFloat(pctIng)>38?'#DDA15E':'#40916C';
+  h+='<div style="background:'+alertCol+'10;border:2px solid '+alertCol+';border-radius:12px;padding:16px 20px;margin-bottom:20px"><div style="display:flex;align-items:center;gap:14px"><div style="font-size:28px">⚖️</div><div style="flex:1"><div style="font-size:14px;font-weight:700;color:'+alertCol+'">Gasto en Personal (sin 21.04): '+pctIng+'% del ingreso propio</div><div style="font-size:12px;color:var(--txl);margin-top:4px">Base cálculo: Planta + Contrata + Hon. Suma Alzada + Horas Extra = $'+formatMM(gastoAnualSinH4)+' MM/año.<br>Excluido: Honorarios 21.04 ($'+formatMM((d.hon2104?d.hon2104.gastoMensual:0)*12)+' MM/año) — financiamiento etiquetado.</div></div></div>';
+  if(parseFloat(pctIng)>42)h+='<div style="margin-top:10px;font-size:12px;color:#BC4749;font-weight:600">🚨 ALERTA: Excede el límite legal del 42%. Plan de reducción requerido.</div>';
+  else if(parseFloat(pctIng)>38)h+='<div style="margin-top:10px;font-size:12px;color:#DDA15E;font-weight:600">⚠️ PRECAUCIÓN: Cerca del límite (42%). Monitorear.</div>';
+  else h+='<div style="margin-top:10px;font-size:12px;color:#40916C;font-weight:600">✅ Dentro del rango. Margen: '+(42-parseFloat(pctIng)).toFixed(1)+' pp.</div>';
   h+='</div>';
-  // Legal reference
-  h+='<div class="cdl"><h4 style="margin:0 0 8px;font-size:14px;font-weight:600">⚖️ Marco Legal — Dotación y Gasto en Personal</h4><div style="font-size:13px;color:var(--txl);line-height:1.8"><strong>Ley 18.294 mod. Ley 21.561:</strong> El gasto total en personal no puede superar el 42% de los ingresos propios permanentes del municipio.<br><strong>Cuenta 21.01 (Planta):</strong> Funcionarios titulares con estabilidad laboral (Ley 18.883).<br><strong>Cuenta 21.02 (Contrata):</strong> Funcionarios a plazo fijo, máximo 31 de diciembre. Renovables.<br><strong>Cuenta 21.03 (Honorarios):</strong> Profesionales y técnicos a honorarios. Sin relación laboral estatutaria. Incluye Suma Alzada.<br><strong>Cuenta 21.04 (Honorarios Programa):</strong> Vinculados a programas específicos con financiamiento etiquetado.<br><strong>Horas Extra:</strong> Art. 60 Ley 18.883. Máximo 4 horas diarias para personal de planta y contrata.</div></div>';
+  // Legal
+  h+='<div class="cdl"><h4 style="margin:0 0 8px;font-size:14px;font-weight:600">⚖️ Marco Legal — Dotación y Gasto en Personal</h4><div style="font-size:13px;color:var(--txl);line-height:1.8"><strong>Ley 18.294 mod. Ley 21.561:</strong> Gasto en personal no puede superar el 42% de ingresos propios. <strong>Excluye honorarios 21.04</strong> (financiamiento etiquetado).<br><strong>21.01 Planta:</strong> Funcionarios titulares (Ley 18.883).<br><strong>21.02 A Contrata:</strong> Funcionarios a plazo fijo. Máximo 31 diciembre.<br><strong>21.03 Honorarios Suma Alzada:</strong> Profesionales/técnicos sin relación estatutaria.<br><strong>21.04 Honorarios Programa:</strong> Vinculados a programas con financiamiento etiquetado (no inciden en el 42%).<br><strong>Horas Extra (Art. 60 Ley 18.883):</strong> Máximo 4 hrs diarias. Solo planta y contrata.</div></div>';
   el.innerHTML=h;
-  // Render Charts
-  var labels=cats.map(function(c){return c.label});
-  var personas=cats.map(function(c){return d[c.key].personas});
-  var gastos=cats.map(function(c){return Math.round(d[c.key].gastoMensual/1000000)});
-  var colores=cats.map(function(c){return c.color});
-  var he=cats.map(function(c){return Math.round(d[c.key].horasExtra/1000000)});
-  var base=cats.map(function(c){return Math.round(d[c.key].gastoMensual/1000000)});
-  // Pie
-  var ctx1=document.getElementById("cDotPie");
-  if(ctx1)charts.push(new Chart(ctx1,{type:"doughnut",data:{labels:labels,datasets:[{data:personas,backgroundColor:colores,borderWidth:2,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{usePointStyle:true,padding:12,font:{family:"DM Sans",size:11}}}}}}));
-  // Bar
-  var ctx2=document.getElementById("cDotBar");
-  if(ctx2)charts.push(new Chart(ctx2,{type:"bar",data:{labels:labels,datasets:[{label:"Gasto Mensual",data:gastos,backgroundColor:colores,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:10}},grid:{color:"#f0f0e0"}}}}}));
-  // Monthly line chart
-  if(ej.length>0){
-    var ctx4=document.getElementById("cDotMensual");
-    if(ctx4){
-      var mLabels=ej.map(function(m){return m.mes});
-      charts.push(new Chart(ctx4,{type:"bar",data:{labels:mLabels,datasets:[
-        {label:"Planta",data:ej.map(function(m){return Math.round((m.planta||0)/1000000)}),backgroundColor:"#1B4332",borderRadius:3,stack:"main"},
-        {label:"Contrata",data:ej.map(function(m){return Math.round((m.contrata||0)/1000000)}),backgroundColor:"#40916C",borderRadius:3,stack:"main"},
-        {label:"Hon. 21.03",data:ej.map(function(m){return Math.round((m.honorarios||0)/1000000)}),backgroundColor:"#3A86A8",borderRadius:3,stack:"main"},
-        {label:"Hon. 21.04",data:ej.map(function(m){return Math.round((m.hon2104||0)/1000000)}),backgroundColor:"#9D4EDD",borderRadius:3,stack:"main"},
-        {label:"S. Alzada",data:ej.map(function(m){return Math.round((m.sumaAlzada||0)/1000000)}),backgroundColor:"#D4A373",borderRadius:3,stack:"main"},
-        {label:"Horas Extra",data:ej.map(function(m){return Math.round((m.heTotal||0)/1000000)}),backgroundColor:"#DDA15E",borderRadius:3,stack:"main"}
-      ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{usePointStyle:true,padding:10,font:{family:"DM Sans",size:10}}}},scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:11}}},y:{stacked:true,ticks:{font:{size:10}},grid:{color:"#f0f0e0"}}}}}));
-    }
-  }
-  // Stacked bar
-  var ctx3=document.getElementById("cDotStack");
-  if(ctx3)charts.push(new Chart(ctx3,{type:"bar",data:{labels:labels,datasets:[{label:"Remuneración Base",data:base,backgroundColor:colores,borderRadius:4},{label:"Horas Extra",data:he,backgroundColor:"#DDA15E",borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{usePointStyle:true,padding:14,font:{family:"DM Sans",size:11}}}},scales:{x:{stacked:true,ticks:{font:{size:10}},grid:{display:false}},y:{stacked:true,ticks:{font:{size:10}},grid:{color:"#f0f0e0"}}}}}));
+  // Render charts after DOM is ready
+  var _chartData={
+    labels:cats.map(function(cc){return cc.label}),
+    personas:cats.map(function(cc){return(d[cc.key]||{}).personas||0}),
+    gastos:cats.map(function(cc){return Math.round(((d[cc.key]||{}).gastoMensual||0)/1000000)}),
+    colores:cats.map(function(cc){return cc.color}),
+    dummy:0
+  };
+  requestAnimationFrame(function(){renderDotCharts(_chartData)});
+}
+function renderDotCharts(cd){
+  try{
+    var ctx1=document.getElementById('cDotPie');
+    if(ctx1)charts.push(new Chart(ctx1,{type:'doughnut',data:{labels:cd.labels,datasets:[{data:cd.personas,backgroundColor:cd.colores,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{usePointStyle:true,padding:12,font:{family:'DM Sans',size:11}}}}}}));
+    var ctx2=document.getElementById('cDotBar');
+    if(ctx2)charts.push(new Chart(ctx2,{type:'bar',data:{labels:cd.labels,datasets:[{label:'Gasto Mensual',data:cd.gastos,backgroundColor:cd.colores,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:10}},grid:{color:'#f0f0e0'}}}}}));
+  }catch(e){console.error('Chart error:',e)}
 }
 
-function addEjecMes(){
-  var meses=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-  var h='<div class="mh"><h2>📈 Agregar Mes de Ejecución</h2><button class="mx" onclick="closeModal()">✕</button></div>';
-  h+='<div class="fg"><label>Mes</label><select class="fi" id="ejMes">';
+function addEjecMesModal(){
+  var meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var h='<div class="mh"><h2>📈 Agregar Mes</h2><button class="mx" onclick="closeModal()">✕</button></div>';
+  h+='<div class="fg"><label>Mes</label><select class="fi" id="xMes">';
   meses.forEach(function(m){h+='<option value="'+m+'">'+m+'</option>'});
   h+='</select></div>';
-  h+='<p style="font-size:12px;color:var(--txl);margin:10px 0">Ingresa los montos en pesos (sin puntos ni comas):</p>';
-  h+='<div class="fr"><div class="fg"><label>Planta (21.01)</label><input class="fi" type="number" id="ejP" value="0"></div><div class="fg"><label>Contrata (21.02)</label><input class="fi" type="number" id="ejC" value="0"></div></div>';
-  h+='<div class="fr"><div class="fg"><label>Honorarios (21.03)</label><input class="fi" type="number" id="ejH" value="0"></div><div class="fg"><label>Honorarios (21.04)</label><input class="fi" type="number" id="ejH4" value="0"></div></div>';
-  h+='<div class="fr"><div class="fg"><label>Suma Alzada</label><input class="fi" type="number" id="ejSA" value="0"></div><div class="fg"><label>Horas Extra (total)</label><input class="fi" type="number" id="ejHE" value="0"></div></div>';
-  h+='<div class="mf"><button class="bs" onclick="closeModal()">Cancelar</button><button class="bp" onclick="saveEjecMes(-1)">Agregar</button></div>';
+  h+='<p style="font-size:12px;color:var(--txl);margin:10px 0">Montos en pesos (sin puntos ni comas):</p>';
+  h+='<div class="fr"><div class="fg"><label>Planta (21.01)</label><input class="fi" type="number" id="xPl" value="0"></div><div class="fg"><label>A Contrata (21.02)</label><input class="fi" type="number" id="xCo" value="0"></div></div>';
+  h+='<div class="fr"><div class="fg"><label>Hon. Suma Alzada (21.03)</label><input class="fi" type="number" id="xHS" value="0"></div><div class="fg"><label>Hon. 21.04</label><input class="fi" type="number" id="xH4" value="0"></div></div>';
+  h+='<div class="fr"><div class="fg"><label>HE Planta</label><input class="fi" type="number" id="xHP" value="0"></div><div class="fg"><label>HE Contrata</label><input class="fi" type="number" id="xHC" value="0"></div></div>';
+  h+='<div class="mf"><button class="bs" onclick="closeModal()">Cancelar</button><button class="bp" onclick="saveEjecMesData(-1)">Agregar</button></div>';
   openModal(h);
 }
-function editEjecMes(i){
+
+function editEjecMesModal(i){
   var m=D.dotacion.ejecucionMensual[i];
   var h='<div class="mh"><h2>✏️ Editar '+m.mes+'</h2><button class="mx" onclick="closeModal()">✕</button></div>';
   h+='<p style="font-size:12px;color:var(--txl);margin-bottom:10px">Montos en pesos chilenos:</p>';
-  h+='<div class="fr"><div class="fg"><label>Planta (21.01)</label><input class="fi" type="number" id="ejP" value="'+(m.planta||0)+'"></div><div class="fg"><label>Contrata (21.02)</label><input class="fi" type="number" id="ejC" value="'+(m.contrata||0)+'"></div></div>';
-  h+='<div class="fr"><div class="fg"><label>Honorarios (21.03)</label><input class="fi" type="number" id="ejH" value="'+(m.honorarios||0)+'"></div><div class="fg"><label>Honorarios (21.04)</label><input class="fi" type="number" id="ejH4" value="'+(m.hon2104||0)+'"></div></div>';
-  h+='<div class="fr"><div class="fg"><label>Suma Alzada</label><input class="fi" type="number" id="ejSA" value="'+(m.sumaAlzada||0)+'"></div><div class="fg"><label>Horas Extra (total)</label><input class="fi" type="number" id="ejHE" value="'+(m.heTotal||0)+'"></div></div>';
-  h+='<div class="mf"><button class="bs" onclick="closeModal()">Cancelar</button><button class="bp" onclick="saveEjecMes('+i+')">Guardar</button></div>';
+  h+='<div class="fr"><div class="fg"><label>Planta (21.01)</label><input class="fi" type="number" id="xPl" value="'+(m.planta||0)+'"></div><div class="fg"><label>A Contrata (21.02)</label><input class="fi" type="number" id="xCo" value="'+(m.contrata||0)+'"></div></div>';
+  h+='<div class="fr"><div class="fg"><label>Hon. Suma Alzada (21.03)</label><input class="fi" type="number" id="xHS" value="'+(m.honSA||0)+'"></div><div class="fg"><label>Hon. 21.04</label><input class="fi" type="number" id="xH4" value="'+(m.hon2104||0)+'"></div></div>';
+  h+='<div class="fr"><div class="fg"><label>HE Planta</label><input class="fi" type="number" id="xHP" value="'+(m.hePlanta||0)+'"></div><div class="fg"><label>HE Contrata</label><input class="fi" type="number" id="xHC" value="'+(m.heContrata||0)+'"></div></div>';
+  h+='<div class="mf"><button class="bs" onclick="closeModal()">Cancelar</button><button class="bp" onclick="saveEjecMesData('+i+')">Guardar</button></div>';
   openModal(h);
 }
-function saveEjecMes(i){
-  var entry={mes:i>=0?D.dotacion.ejecucionMensual[i].mes:document.getElementById("ejMes").value,planta:parseInt(document.getElementById("ejP").value)||0,contrata:parseInt(document.getElementById("ejC").value)||0,honorarios:parseInt(document.getElementById("ejH").value)||0,hon2104:parseInt(document.getElementById("ejH4").value)||0,sumaAlzada:parseInt(document.getElementById("ejSA").value)||0,heTotal:parseInt(document.getElementById("ejHE").value)||0};
+
+function saveEjecMesData(i){
+  var mesVal=i>=0?D.dotacion.ejecucionMensual[i].mes:(document.getElementById('xMes')?document.getElementById('xMes').value:'');
+  var pl=parseInt(document.getElementById('xPl').value)||0;
+  var co=parseInt(document.getElementById('xCo').value)||0;
+  var hs=parseInt(document.getElementById('xHS').value)||0;
+  var h4=parseInt(document.getElementById('xH4').value)||0;
+  var hp=parseInt(document.getElementById('xHP').value)||0;
+  var hc=parseInt(document.getElementById('xHC').value)||0;
+  var entry={mes:mesVal,planta:pl,contrata:co,honSA:hs,hon2104:h4,hePlanta:hp,heContrata:hc};
   if(i>=0){D.dotacion.ejecucionMensual[i]=entry}
   else{
-    // Check if month already exists
-    var exists=D.dotacion.ejecucionMensual.findIndex(function(m){return m.mes===entry.mes});
-    if(exists>=0){if(confirm("El mes "+entry.mes+" ya existe. ¿Reemplazar?")){D.dotacion.ejecucionMensual[exists]=entry}else{return}}
+    var exists=-1;
+    for(var j=0;j<D.dotacion.ejecucionMensual.length;j++){if(D.dotacion.ejecucionMensual[j].mes===entry.mes){exists=j;break}}
+    if(exists>=0){if(confirm('El mes '+entry.mes+' ya existe. ¿Reemplazar?')){D.dotacion.ejecucionMensual[exists]=entry}else{return}}
     else{D.dotacion.ejecucionMensual.push(entry)}
   }
-  logAction("Ejecución mensual "+(i>=0?"editada":"agregada"),entry.mes+" — $"+formatMM((entry.planta||0)+(entry.contrata||0)+(entry.honorarios||0)+(entry.hon2104||0)+(entry.sumaAlzada||0)+(entry.heTotal||0))+" MM total","dotacion");
-  save();closeModal();render();toast("✅ "+(i>=0?"Mes actualizado":"Mes agregado"));
+  var tot=pl+co+hs+h4+hp+hc;
+  logAction('Ejecución mensual '+(i>=0?'editada':'agregada'),entry.mes,'dotacion');
+  closeModal();save();
+  setTimeout(function(){render();toast(i>=0?'Mes actualizado':'Mes agregado')},100);
 }
-function delEjecMes(i){
-  if(!confirm("¿Eliminar "+D.dotacion.ejecucionMensual[i].mes+"?"))return;
-  D.dotacion.ejecucionMensual.splice(i,1);save();render();toast("Mes eliminado");
+
+function delEjecMesAction(i){
+  if(!confirm('¿Eliminar '+D.dotacion.ejecucionMensual[i].mes+'?'))return;
+  D.dotacion.ejecucionMensual.splice(i,1);save();render();toast('Mes eliminado');
 }
 
 function editDotacion(){
   var d=D.dotacion;
-  var cats=[{key:"planta",label:"Planta (21.01)"},{key:"contrata",label:"Contrata (21.02)"},{key:"honorarios",label:"Honorarios (21.03)"},{key:"hon2104",label:"Honorarios (21.04)"},{key:"sumaAlzada",label:"Suma Alzada (21.03 SA)"}];
-  var h='<div class="mh"><h2>✏️ Editar Dotación Municipal</h2><button class="mx" onclick="closeModal()">✕</button></div>';
-  h+='<p style="font-size:12px;color:var(--txl);margin-bottom:14px">Edita las cifras de cada categoría. Montos en pesos chilenos (sin puntos ni comas).</p>';
-  h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#1B433210"><th style="padding:8px;text-align:left">Categoría</th><th style="padding:8px;text-align:center">Personas</th><th style="padding:8px;text-align:center">Gasto Mensual ($)</th><th style="padding:8px;text-align:center">Horas Extra ($)</th></tr></thead><tbody>';
+  var cats=[{key:'planta',label:'Planta (21.01)'},{key:'contrata',label:'A Contrata (21.02)'},{key:'honSumaAlzada',label:'Hon. Suma Alzada (21.03)'},{key:'hon2104',label:'Honorarios (21.04)'}];
+  var h='<div class="mh"><h2>✏️ Editar Dotación</h2><button class="mx" onclick="closeModal()">✕</button></div>';
+  h+='<p style="font-size:12px;color:var(--txl);margin-bottom:14px">Montos en pesos. Hon. 21.04 no incide en cálculo del 42%.</p>';
+  h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#1B433210"><th style="padding:8px;text-align:left">Categoría</th><th style="padding:8px;text-align:center">Personas</th><th style="padding:8px;text-align:center">Gasto Mensual ($)</th></tr></thead><tbody>';
   cats.forEach(function(c,i){
-    var x=d[c.key];
+    var x=d[c.key]||{personas:0,gastoMensual:0};
     h+='<tr style="border-bottom:1px solid rgba(212,212,170,.2)"><td style="padding:8px;font-weight:600">'+c.label+'</td>';
-    h+='<td style="padding:8px"><input class="fi" type="number" id="dp'+i+'" value="'+x.personas+'" style="text-align:center;width:80px"></td>';
-    h+='<td style="padding:8px"><input class="fi" type="number" id="dg'+i+'" value="'+x.gastoMensual+'" style="width:140px"></td>';
-    h+='<td style="padding:8px"><input class="fi" type="number" id="dh'+i+'" value="'+x.horasExtra+'" style="width:140px"></td></tr>';
+    h+='<td style="padding:8px"><input class="fi" type="number" id="zp'+i+'" value="'+(x.personas||0)+'" style="text-align:center;width:80px"></td>';
+    h+='<td style="padding:8px"><input class="fi" type="number" id="zg'+i+'" value="'+(x.gastoMensual||0)+'" style="width:160px"></td></tr>';
   });
   h+='</tbody></table></div>';
   h+='<div class="mf"><button class="bs" onclick="closeModal()">Cancelar</button><button class="bp" onclick="saveDotacion()">Guardar</button></div>';
@@ -634,21 +656,24 @@ function editDotacion(){
 }
 
 function saveDotacion(){
-  var keys=["planta","contrata","honorarios","hon2104","sumaAlzada"];
+  var keys=['planta','contrata','honSumaAlzada','hon2104'];
+  var vals=[];
+  keys.forEach(function(k,i){vals.push({p:parseInt(document.getElementById('zp'+i).value)||0,g:parseInt(document.getElementById('zg'+i).value)||0})});
+  closeModal();
   keys.forEach(function(k,i){
-    D.dotacion[k].personas=parseInt(document.getElementById("dp"+i).value)||0;
-    D.dotacion[k].gastoMensual=parseInt(document.getElementById("dg"+i).value)||0;
-    D.dotacion[k].horasExtra=parseInt(document.getElementById("dh"+i).value)||0;
+    if(!D.dotacion[k])D.dotacion[k]={personas:0,gastoMensual:0,cuentaSub:''};
+    D.dotacion[k].personas=vals[i].p;
+    D.dotacion[k].gastoMensual=vals[i].g;
   });
-  D.dotacion.lastUpdate=new Date().toLocaleDateString("es-CL");
-  logAction("Dotación municipal editada","Actualización manual de cifras","dotacion");
-  save();closeModal();render();toast("✅ Dotación actualizada");
+  D.dotacion.lastUpdate=new Date().toLocaleDateString('es-CL');
+  logAction('Dotación editada','Actualización manual','dotacion');
+  save();
+  setTimeout(function(){render();toast('Dotación actualizada')},100);
 }
 
 function openDotacionExcel(){
   var h='<div class="mh"><h2>📂 Cargar Dotación desde Excel</h2><button class="mx" onclick="closeModal()">✕</button></div>';
-  h+='<p style="font-size:13px;color:var(--txl);margin-bottom:14px;line-height:1.6">Sube un archivo Excel con la información de dotación. El sistema buscará automáticamente las columnas relevantes. Formatos aceptados:</p>';
-  h+='<div style="background:rgba(58,134,168,.08);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--txl);line-height:1.8"><strong>Opción A — Formato simple (5 filas):</strong><br>Columnas: Categoría | Personas | Gasto Mensual | Horas Extra<br>Filas: Planta, Contrata, Honorarios, Hon. 21.04, Suma Alzada<br><br><strong>Opción B — Formato libre:</strong><br>El sistema detectará palabras clave como "planta", "contrata", "honorario", "21.03", "21.04", "suma alzada" en cualquier columna y extraerá los números asociados.</div>';
+  h+='<p style="font-size:13px;color:var(--txl);margin-bottom:14px;line-height:1.6">Sube un archivo Excel. El sistema buscará palabras clave: "planta", "contrata", "suma alzada", "21.03", "21.04" y extraerá personas y montos.</p>';
   h+='<div class="fg"><label>Archivo Excel (.xls / .xlsx)</label><input class="fi" type="file" id="dotXlsFile" accept=".xls,.xlsx"></div>';
   h+='<div id="dotXlsPreview" style="margin-top:14px"></div>';
   h+='<div class="mf"><button class="bs" onclick="closeModal()">Cancelar</button><button class="bp" onclick="processDotacionExcel()">Cargar</button></div>';
@@ -656,79 +681,55 @@ function openDotacionExcel(){
 }
 
 function processDotacionExcel(){
-  var file=document.getElementById("dotXlsFile").files[0];
-  if(!file){alert("Selecciona un archivo");return}
-  var p=document.getElementById("dotXlsPreview");
+  var file=document.getElementById('dotXlsFile').files[0];
+  if(!file){alert('Selecciona un archivo');return}
+  var p=document.getElementById('dotXlsPreview');
   p.innerHTML='<p style="color:var(--txl);font-size:13px">⏳ Procesando...</p>';
   var reader=new FileReader();
   reader.onload=function(e){
     try{
-      var wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"});
-      var rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:"",raw:true});
-      // Strategy: scan all rows for keywords to identify categories
-      var mapping={planta:null,contrata:null,honorarios:null,hon2104:null,sumaAlzada:null};
+      var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      var rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:true});
+      var mapping={planta:null,contrata:null,honSumaAlzada:null,hon2104:null};
       var detected=[];
       for(var i=0;i<rows.length;i++){
-        var rowText=rows[i].map(function(c){return String(c).toLowerCase()}).join(" ");
+        var rowText=rows[i].map(function(c){return String(c).toLowerCase()}).join(' ');
         var nums=[];
-        rows[i].forEach(function(c){var n=parseFloat(String(c).replace(/[^0-9.-]/g,""));if(!isNaN(n)&&n>0)nums.push(n)});
+        rows[i].forEach(function(c){var n=parseFloat(String(c).replace(/[^0-9.-]/g,''));if(!isNaN(n)&&n>0)nums.push(n)});
         if(nums.length===0)continue;
-        // Detect category
-        var cat=null,label="";
-        if(/suma\s*alzada|21\.03\s*sa/i.test(rowText)){cat="sumaAlzada";label="Suma Alzada"}
-        else if(/21\.04|honorario.*programa|programa.*honorario/i.test(rowText)){cat="hon2104";label="Honorarios 21.04"}
-        else if(/honorari|21\.03/i.test(rowText)&&!/suma/i.test(rowText)&&!/21\.04/i.test(rowText)){cat="honorarios";label="Honorarios 21.03"}
-        else if(/contrata|21\.02/i.test(rowText)){cat="contrata";label="Contrata"}
-        else if(/planta|21\.01/i.test(rowText)&&!/contrata/i.test(rowText)){cat="planta";label="Planta"}
+        var cat=null,label='';
+        if(/suma\s*alzada|21\.03/i.test(rowText)&&!/21\.04/i.test(rowText)){cat='honSumaAlzada';label='Hon. Suma Alzada'}
+        else if(/21\.04|honorario.*programa/i.test(rowText)){cat='hon2104';label='Honorarios 21.04'}
+        else if(/contrata|21\.02/i.test(rowText)){cat='contrata';label='A Contrata'}
+        else if(/planta|21\.01/i.test(rowText)&&!/contrata/i.test(rowText)){cat='planta';label='Planta'}
         if(cat&&!mapping[cat]){
-          // First integer is personas, largest number is gasto
-          var personas=0,gasto=0,he=0;
           nums.sort(function(a,b){return a-b});
-          if(nums.length>=1)personas=Math.round(nums[0]);
-          if(nums.length>=2)gasto=Math.round(nums[nums.length-1]);
-          if(nums.length>=3)he=Math.round(nums[nums.length-2]);
-          // If personas > 500 it is probably a monetary value, swap logic
-          if(personas>500){var tmp=personas;personas=0;gasto=Math.max(tmp,gasto)}
-          mapping[cat]={personas:personas,gasto:gasto,he:he};
-          detected.push(label+": "+personas+" pers, $"+formatMM(gasto)+" MM");
+          var personas=Math.round(nums[0]);var gasto=Math.round(nums[nums.length-1]);
+          if(personas>500){personas=0;gasto=Math.max.apply(null,nums)}
+          mapping[cat]={personas:personas,gasto:gasto};
+          detected.push(label+': '+personas+' pers, $'+formatMM(gasto)+' MM');
         }
       }
-      // Alternatively: try simple format (header + 5 rows)
-      if(detected.length===0&&rows.length>=2){
-        var keys2=["planta","contrata","honorarios","hon2104","sumaAlzada"];
-        var labels2=["Planta","Contrata","Honorarios","Hon 21.04","Suma Alzada"];
-        for(var j=1;j<=Math.min(5,rows.length-1);j++){
-          var row=rows[j];if(!row||row.length<2)continue;
-          var k=keys2[j-1];if(!k)continue;
-          var pers=parseInt(row[1])||0;
-          var gas=parseInt(row[2])||0;
-          var hext=parseInt(row[3])||0;
-          mapping[k]={personas:pers,gasto:gas,he:hext};
-          detected.push(labels2[j-1]+": "+pers+" pers, $"+formatMM(gas)+" MM");
-        }
-      }
-      if(detected.length===0){p.innerHTML='<div style="background:rgba(188,71,73,.1);padding:12px;border-radius:8px;color:#BC4749;font-size:13px">❌ No se detectaron categorías de dotación en el archivo. Verifica que contenga palabras como "planta", "contrata", "honorarios", "21.03", "21.04" o "suma alzada".</div>';return}
-      // Apply
-      var applied=0;
+      if(detected.length===0){p.innerHTML='<div style="background:rgba(188,71,73,.1);padding:12px;border-radius:8px;color:#BC4749;font-size:13px">❌ No se detectaron categorías.</div>';return}
       Object.keys(mapping).forEach(function(k){
         if(mapping[k]){
+          if(!D.dotacion[k])D.dotacion[k]={personas:0,gastoMensual:0,cuentaSub:''};
           D.dotacion[k].personas=mapping[k].personas;
           if(mapping[k].gasto>0)D.dotacion[k].gastoMensual=mapping[k].gasto;
-          if(mapping[k].he>0)D.dotacion[k].horasExtra=mapping[k].he;
-          applied++;
         }
       });
-      D.dotacion.lastUpdate=new Date().toLocaleDateString("es-CL")+" (Excel: "+file.name+")";
-      logAction("Dotación cargada desde Excel",file.name+" — "+applied+" categorías","dotacion");
+      D.dotacion.lastUpdate=new Date().toLocaleDateString('es-CL')+' (Excel: '+file.name+')';
+      logAction('Dotación cargada desde Excel',file.name,'dotacion');
       save();
-      p.innerHTML='<div style="background:rgba(64,145,108,.1);padding:12px;border-radius:8px;color:#1B4332;font-size:13px"><strong>✅ '+applied+' categorías detectadas y cargadas:</strong><br><span style="font-size:11px">'+detected.join("<br>")+'</span></div>';
-      setTimeout(function(){closeModal();render();toast("✅ Dotación actualizada desde Excel")},2000);
+      p.innerHTML='<div style="background:rgba(64,145,108,.1);padding:12px;border-radius:8px;color:#1B4332;font-size:13px"><strong>✅ Categorías detectadas:</strong><br><span style="font-size:11px">'+detected.join('<br>')+'</span></div>';
+      setTimeout(function(){closeModal();render();toast('✅ Dotación actualizada')},2000);
     }catch(err){p.innerHTML='<div style="background:rgba(188,71,73,.1);padding:12px;border-radius:8px;color:#BC4749;font-size:13px">❌ '+err.message+'</div>'}
   };
   reader.readAsArrayBuffer(file);
 }
 
 // ══════ PRESUPUESTO ══════
+
 function rPresupuesto(){
   var el=document.getElementById("sc");var b=D.budget;
   var h='<div class="bar"><h3 style="font-size:15px;font-weight:600;flex:1">Resumen Financiero</h3><button class="bs" onclick="openExcelUpload()">📂 Cargar Excel</button><button class="bs" onclick="editBudget()">✏️ Editar manual</button></div>';
@@ -916,6 +917,8 @@ function rTrimestrales(){
       if(!D.procesosRelevantes)D.procesosRelevantes=JSON.parse(JSON.stringify(DEF.procesosRelevantes));
       if(!D.bitacora)D.bitacora=[];
       if(!D.dotacion)D.dotacion=JSON.parse(JSON.stringify(DEF.dotacion));
+      if(D.dotacion&&!D.dotacion.honSumaAlzada)D.dotacion.honSumaAlzada={personas:0,gastoMensual:0,cuentaSub:'21.03'};
+      if(D.dotacion&&!D.dotacion.ejecucionMensual)D.dotacion.ejecucionMensual=[];
       // Force refresh mercado if old 2025 licitaciones detected
       if(D.mercado&&D.mercado.some(function(m){return(m.oc||"").indexOf("25")>=0&&(m.oc||"").indexOf("2025")<0&&/-L[PEQ]25$/.test(m.oc||"")})){
         D.mercado=JSON.parse(JSON.stringify(DEF.mercado));
@@ -1717,12 +1720,16 @@ function processProjExcel(){
 function logAction(accion,detalle,seccion){
   if(!D.bitacora)D.bitacora=[];
       if(!D.dotacion)D.dotacion=JSON.parse(JSON.stringify(DEF.dotacion));
+      if(D.dotacion&&!D.dotacion.honSumaAlzada)D.dotacion.honSumaAlzada={personas:0,gastoMensual:0,cuentaSub:'21.03'};
+      if(D.dotacion&&!D.dotacion.ejecucionMensual)D.dotacion.ejecucionMensual=[];
   D.bitacora.unshift({id:nid(),fecha:new Date().toISOString(),accion:accion,detalle:detalle,seccion:seccion});
   if(D.bitacora.length>500)D.bitacora=D.bitacora.slice(0,500);
 }
 function rBitacora(){
   if(!D.bitacora)D.bitacora=[];
       if(!D.dotacion)D.dotacion=JSON.parse(JSON.stringify(DEF.dotacion));
+      if(D.dotacion&&!D.dotacion.honSumaAlzada)D.dotacion.honSumaAlzada={personas:0,gastoMensual:0,cuentaSub:'21.03'};
+      if(D.dotacion&&!D.dotacion.ejecucionMensual)D.dotacion.ejecucionMensual=[];
   var el=document.getElementById("sc");
   var h='<p style="font-size:14px;color:var(--txl);margin-bottom:20px;line-height:1.6">Registro automático de acciones realizadas en el panel. Útil para trazabilidad administrativa de decisiones y cambios.</p>';
   // Filter bar
@@ -2060,6 +2067,8 @@ function importData(input){
       if(!D.procesosRelevantes)D.procesosRelevantes=JSON.parse(JSON.stringify(DEF.procesosRelevantes));
       if(!D.bitacora)D.bitacora=[];
       if(!D.dotacion)D.dotacion=JSON.parse(JSON.stringify(DEF.dotacion));
+      if(D.dotacion&&!D.dotacion.honSumaAlzada)D.dotacion.honSumaAlzada={personas:0,gastoMensual:0,cuentaSub:'21.03'};
+      if(D.dotacion&&!D.dotacion.ejecucionMensual)D.dotacion.ejecucionMensual=[];
       if(!D.budget.cuentas)D.budget.cuentas=DEF.budget.cuentas;
       save();render();toast("✅ Respaldo restaurado");
     }catch(err){alert("Error al importar: "+err.message)}
